@@ -847,24 +847,42 @@
       document
         .getElementById("load-team-btn")
         .addEventListener("click", function () {
-          const fileInput = document.getElementById("team-file-input");
-          if (!fileInput.files[0]) {
-            alert("Please choose a Teams CSV file.");
-            return;
-          }
-          Papa.parse(fileInput.files[0], {
+          const csvUrl =
+            "https://drawing-system-iaitbcup2025-5m2i.vercel.app/draw_matrix.csv";
+
+          Papa.parse(csvUrl, {
+            download: true,
             header: true,
             skipEmptyLines: true,
             complete: function (results) {
               console.log("Team CSV parsed:", results.data);
               populateTeamList(results.data);
-              // Hide the CSV upload controls after loading.
+
+              // Hide the CSV upload controls if needed
               document.querySelector(".file-group").style.display = "none";
             },
             error: function (error) {
               console.error("Error parsing Teams CSV:", error);
             },
           });
+          // const fileInput = document.getElementById("team-file-input");
+          // if (!fileInput.files[0]) {
+          //   alert("Please choose a Teams CSV file.");
+          //   return;
+          // }
+          // Papa.parse(fileInput.files[0], {
+          //   header: true,
+          //   skipEmptyLines: true,
+          //   complete: function (results) {
+          //     console.log("Team CSV parsed:", results.data);
+          //     populateTeamList(results.data);
+          //     // Hide the CSV upload controls after loading.
+          //     document.querySelector(".file-group").style.display = "none";
+          //   },
+          //   error: function (error) {
+          //     console.error("Error parsing Teams CSV:", error);
+          //   },
+          // });
         });
 
       // On window load, generate the empty matrices and slot list.
