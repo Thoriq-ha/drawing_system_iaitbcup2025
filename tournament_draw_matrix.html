@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Tournament Draw - UCL Style</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+  <style>
+    /* CSS Variables with UCL theme */
+:root {
+  --base-color: #0e1e5b; /* UCL deep blue */
+  --light-bg: #ffffff;
+  --dark-bg: #0a1232;
+  --text-color: #333;
+  --header-height: 60px;
+  --transition-speed: 0.3s;
+  --silver: #c8c9c7;
+  --box-bg: #302c93;
+  --primary-row-bg: #0e1e5b; /* Same as base-color for primary row/column */
+}
+
+/* Global Styles */
+body {
+  font-family: 'Roboto', sans-serif;
+  background: var(--light-bg);
+  margin: 0;
+  padding: 0;
+  transition: background var(--transition-speed), color var(--transition-speed);
+}
+
+header {
+  position: sticky;
+  top: 0;
+  color: var(--light-bg);
+  padding: 15px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  z-index: 100;
+  border-bottom: 3px solid var(--silver);
+}
+
+/* Layout */
+.container {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  margin: 20px auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.left-panel,
+.right-panel {
+  background: var(--light-bg);
+  padding: 15px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: background var(--transition-speed);
+  border: 1px solid var(--silver);
+}
+
+.left-panel {
+  flex: 0 0 200px;
+  height: 600px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.right-panel {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.team-container,
+.slot-container {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.team-container {
+  margin-bottom: 15px;
+}
+
+/* Right panel layout */
+.right-panel-content {
+  display: flex;
+  gap: 20px;
+}
+
+.matrices-container {
+  flex: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.team-grid-container {
+  flex: 1;
+  background: var(--light-bg);
+  transition: background var(--transition-speed);
+  max-width: 240px;
+}
+
+/* Team Grid Styles */
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+}
+
+.team-grid-item {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #e8ebf7;
+  transition: transform var(--transition-speed);
+  text-align: center;
+}
+
+/* Color groups for team grid */
+.team-grid-item.group-1 {
+  background: #80ed99; /* Light green */
+}
+
+.team-grid-item.group-2 {
+  background: #57cc99; /* Medium green */
+}
+
+.team-grid-item.group-3 {
+  background: #38a3a5; /* Dark green */
+}
+
+.team-grid-item.group-4 {
+  background: #22577a; /* Very dark green */
+}
+
+.team-grid-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.team-grid-item img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  margin-bottom: 5px;
+}
+
+.team-grid-item span {
+  font-size: 12px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Controls */
+.file-group {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+input, 
+button {
+  padding: 10px 20px;
+  margin: 10px 5px;
+  font-size: 16px;
+  border-radius: 4px;
+  outline: none;
+  transition: background var(--transition-speed), border var(--transition-speed);
+}
+
+input {
+  border: 1px solid #ccc;
+}
+
+button {
+  background-color: var(--base-color);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.toggle-dark {
+  position: absolute;
+  right: 15px;
+  top: 15px;
+  font-size: 14px;
+  padding: 5px 10px;
+  background-color: rgba(255,255,255,0.15);
+  border: 1px solid var(--silver);
+}
+
+.toggle-dark:hover {
+  background-color: rgba(255,255,255,0.25);
+}
+
+/* Section Titles */
+.section-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin: 0 0 10px 0;
+  color: var(--base-color);
+  position: relative;
+  padding-left: 15px;
+  text-transform: uppercase;
+}
+
+.section-title:before {
+  content: "★";
+  position: absolute;
+  left: 0;
+}
+
+/* Team List */
+.team-list .team {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  margin-bottom: 10px;
+  background: #e8ebf7;
+  border-radius: 4px;
+  cursor: grab;
+  transition: transform var(--transition-speed);
+}
+
+.team-list .team:hover {
+  transform: scale(1.02);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.team-list .team img {
+  width: 30px;
+  height: auto;
+  margin-right: 10px;
+}
+
+/* Slot List */
+.slot-list .slot {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  transition: transform var(--transition-speed), background var(--transition-speed);
+  border-left: 3px solid var(--base-color);
+  position: relative;
+  min-height: 50px;
+  background: #e8ebf7;
+}
+
+.slot-list .slot .slot-letter {
+  position: absolute;
+  left: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--base-color);
+}
+
+.slot-list .slot.filled .slot-letter {
+  display: none;
+}
+
+.slot-list .slot .team-display {
+  margin-left: 25px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.slot-list .slot .team-display img {
+  width: 30px;
+  height: auto;
+  margin-right: 10px;
+}
+
+/* Matrix */
+.matrix-container {
+  width: 100%;
+  padding: 10px;
+}
+
+.matrix {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  background: var(--base-color);
+  border: 1px solid var(--silver);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: background var(--transition-speed);
+}
+
+.matrix th, 
+.matrix td {
+  padding: 8px;
+  text-align: center;
+  width: 8%;
+  vertical-align: middle;
+  font-size: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: 1px solid var(--box-bg);
+}
+
+.matrix th {
+  background-image: linear-gradient(to bottom, var(--base-color), var(--primary-row-bg));
+  color: var(--light-bg);
+  text-transform: uppercase;
+  font-size: 16px;
+  border-color: #0a1232;
+  padding: 20px;
+}
+
+.matrix tr:hover {
+  background-color: var(--box-bg);
+}
+
+.matrix .team-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.matrix .team-display img {
+  max-width: 40px;
+  max-height: 40px;
+  object-fit: contain;
+}
+
+.matrix .team-display span {
+  color: #f5efff;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 100%;
+  margin-top: 3px;
+}
+
+/* Matrix Cell Types */
+/* Update primary-droppable to use the same dark blue background */
+.primary-droppable {
+  background: var(--primary-row-bg);
+  transition: all var(--transition-speed);
+  cursor: pointer;
+  color: var(--light-bg);
+}
+
+/* Updated: Increased font size for primary cells */
+.primary-droppable .team-display span {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.primary-droppable .placeholder {
+  color: var(--light-bg);
+  font-size: 18px;  /* Increased font size for placeholder text */
+  font-weight: bold;
+}
+
+.primary-droppable.dragover {
+  background-color: rgba(0,160,228,0.3);
+}
+
+.gameweek-cell {
+  background-color: var(--box-bg);
+  transition: border var(--transition-speed);
+}
+
+.placeholder {
+  font-size: 10px;
+  color: #f5efff;
+  font-weight: bold;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+/* Animations */
+@keyframes cellUpdate {
+  0% { 
+    transform: scale(0.7);
+    opacity: 0; 
+    background-color: inherit;
+  }
+  50% { 
+    transform: scale(1.1);
+    opacity: 0.5; 
+    background-color: rgba(0,160,228,0.1);
+  }
+  100% { 
+    transform: scale(1);
+    opacity: 1; 
+    background-color: inherit;
+  }
+}
+
+.cell-animation {
+  animation: cellUpdate 1.5s ease-in-out;
+}
+
+/* Dark Mode */
+body.dark {
+  background: var(--dark-bg);
+  color: var(--light-bg);
+}
+
+body.dark .container,
+body.dark .left-panel,
+body.dark .right-panel,
+body.dark .matrices-container,
+body.dark .team-grid-container,
+body.dark .matrix,
+body.dark .slot-list {
+  background: #131d3f;
+}
+
+body.dark .matrix th {
+  background: var(--base-color);
+  color: var(--silver);
+}
+
+body.dark .placeholder {
+  color: #8a8fb0;
+}
+
+body.dark .team-list .team,
+body.dark .slot-list .slot {
+  background: #1a2550;
+  color: var(--light-bg);
+}
+
+/* Dark mode for team grid items with color groups preserved */
+body.dark .team-grid-item {
+  color: var(--light-bg);
+}
+
+body.dark .team-grid-item.group-1 {
+  background: #2a6640; /* Dark mode - Light green */
+}
+
+body.dark .team-grid-item.group-2 {
+  background: #1a4d35; /* Dark mode - Medium green */
+}
+
+body.dark .team-grid-item.group-3 {
+  background: #14353a; /* Dark mode - Dark green */
+}
+
+body.dark .team-grid-item.group-4 {
+  background: #0e2536; /* Dark mode - Very dark green */
+}
+
+body.dark .matrix tr:hover {
+  background-color: #1c284e;
+}
+
+body.dark .primary-droppable {
+  background: var(--primary-row-bg);
+}
+
+body.dark .gameweek-cell {
+  background: #0e1e5b;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .container {
+    flex-direction: column;
+  }
+  .left-panel {
+    width: 100%;
+    max-width: none;
+    height: auto;
+  }
+  .right-panel-content {
+    flex-direction: column;
+  }
+  .team-grid-container {
+    max-width: none;
+  }
+}
+  </style>
+</head>
+<body>
+  
+  <div class="container">
+    <!-- Left Panel: Team List and Slot List -->
+    <div class="left-panel">
+      <div class="file-group" id="uploadSection">
+        <input type="file" id="team-file-input" accept=".csv">
+        <button id="load-team-btn">Load Teams CSV</button>
+      </div>
+      
+      <div class="team-container">
+        <h2>Teams</h2>
+        <div id="teamList" class="team-list">
+          <!-- Team list will be populated from CSV -->
+        </div>
+      </div>
+      
+      <div class="slot-container">
+        <h2>Slots</h2>
+        <div id="slotList" class="slot-list">
+          <!-- Slot list will be generated dynamically -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- Right Panel: Matchup Matrices and Team Grid -->
+    <div class="right-panel">
+      <div class="right-panel-content">
+        <!-- Team Grid (3x8) -->
+        <div class="team-grid-container">
+          <div id="teamGrid" class="team-grid">
+            <!-- Grid will be populated with teams -->
+          </div>
+        </div>
+        <!-- Matrices Container -->
+        <div class="matrices-container">
+          <!-- First Matrix (Slots A-L) -->
+          <div class="matrix-container">
+            <table class="matrix" id="matrix1">
+              <!-- Table will be generated dynamically -->
+            </table>
+          </div>
+          
+          <!-- Second Matrix (Slots M-X) -->
+          <div class="matrix-container">
+            <table class="matrix" id="matrix2">
+              <!-- Table will be generated dynamically -->
+            </table>
+          </div>
+
+          <!-- Third Matrix (Additional) -->
+          <div class="matrix-container">
+            <table class="matrix" id="matrix3">
+              <!-- Table will be generated dynamically -->
+            </table>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+
+  <script>    
+    // Mapping for gameweek cell placeholders.
+    // For each primary slot letter, these are the placeholders for columns Gameweek 1-4.
+    const mapping = {
+      A: ["C","H","N","U"],
+      B: ["G","M","D","T"],
+      C: ["A","L","R","W"],
+      D: ["O","J","B","V"],
+      E: ["F","P","K","X"],
+      F: ["E","I","Q","S"],
+      G: ["B","U","O","K"],
+      H: ["J","A","V","Q"],
+      I: ["L","F","W","P"],
+      J: ["H","D","T","N"],
+      K: ["R","X","E","G"],
+      L: ["I","C","S","M"],
+      M: ["N","B","X","L"],
+      N: ["M","W","A","J"],
+      O: ["D","V","G","R"],
+      P: ["Q","E","U","I"],
+      Q: ["P","T","F","H"],
+      R: ["K","S","C","O"],
+      S: ["T","R","L","F"],
+      T: ["S","Q","J","B"],
+      U: ["V","G","P","A"],
+      V: ["U","O","H","D"],
+      W: ["X","N","I","C"],
+      X: ["W","K","M","E"]
+    };
+
+    // Track which team is assigned to which slot
+    const slotAssignments = {};
+    
+    // Generate slot list A-X
+    function generateSlotList() {
+      const slotListDiv = document.getElementById('slotList');
+      slotListDiv.innerHTML = "";
+      
+      // Create slot elements A-X
+      for (let i = 0; i < 24; i++) {
+        const letter = String.fromCharCode(65 + i);
+        const slotDiv = document.createElement('div');
+        slotDiv.classList.add('slot');
+        slotDiv.setAttribute('data-slot', letter);
+        slotDiv.innerHTML = `<span class="slot-letter">${letter}</span>`;
+        slotListDiv.appendChild(slotDiv);
+      }
+      
+      // Make slots droppable
+      document.querySelectorAll('.slot').forEach(slot => {
+        slot.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          slot.classList.add('dragover');
+        });
+        slot.addEventListener('dragleave', () => {
+          slot.classList.remove('dragover');
+        });
+        slot.addEventListener('drop', (e) => {
+          e.preventDefault();
+          slot.classList.remove('dragover');
+          const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+          const slotLetter = slot.getAttribute('data-slot');
+          
+          // Clear any previous assignment for this slot
+          if (slotAssignments[slotLetter]) {
+            removeTeamFromSlot(slotLetter);
+          }
+          
+          // Update the slot with team info
+          slot.innerHTML = `
+            <div class="team-display">
+              <img src="${data.logo}" alt="${data.team}">
+              <span>${data.team}</span>
+            </div>
+          `;
+          slot.classList.add('filled');
+          
+          // Store the assignment
+          slotAssignments[slotLetter] = data;
+          
+          // Update the matrix cells
+          updateMatrixCells(slotLetter, data);
+        });
+      });
+    }
+    
+    // Update all matrix cells for a given slot assignment
+    function updateMatrixCells(slotLetter, teamData) {
+      // Update the primary cell
+      const primaryCell = document.querySelector(`.primary-droppable[data-slot="${slotLetter}"]`);
+      if (primaryCell) {
+        primaryCell.innerHTML = `
+          <div class="team-display">
+            <img src="${teamData.logo}" alt="${teamData.team}">
+            <span>${teamData.team}</span>
+          </div>
+        `;
+        // Apply the animation class
+        animateCell(primaryCell);
+      }
+      
+      // Update all gameweek cells
+      propagateAssignment(slotLetter, teamData);
+    }
+    
+    // Add animation to a cell
+    function animateCell(cell) {
+      // Remove the animation class if it's already there
+      cell.classList.remove('cell-animation');
+      
+      // Force a reflow to restart the animation
+      void cell.offsetWidth;
+      
+      // Add the animation class
+      cell.classList.add('cell-animation');
+    }
+    
+    // Remove a team from a slot and clear related matrix cells
+    function removeTeamFromSlot(slotLetter) {
+      // Clear the slot in the slot list
+      const slotDiv = document.querySelector(`.slot[data-slot="${slotLetter}"]`);
+      if (slotDiv) {
+        slotDiv.innerHTML = `<span class="slot-letter">${slotLetter}</span>`;
+        slotDiv.classList.remove('filled');
+      }
+      
+      // Clear the primary cell in the matrix
+      const primaryCell = document.querySelector(`.primary-droppable[data-slot="${slotLetter}"]`);
+      if (primaryCell) {
+        primaryCell.innerHTML = `<span class="placeholder">${slotLetter}</span>`;
+      }
+      
+      // Clear all gameweek cells referencing this slot
+      document.querySelectorAll('.gameweek-cell').forEach(cell => {
+        if (cell.getAttribute('data-placeholder') === slotLetter) {
+          const placeholder = cell.getAttribute('data-placeholder');
+          cell.innerHTML = `<span class="placeholder">${placeholder}</span>`;
+        }
+      });
+      
+      // Remove from assignments
+      delete slotAssignments[slotLetter];
+    }
+
+    // Generate the matrices - one for slots A-L and one for slots M-X
+    function generateMatrices() {
+      generateMatrix("matrix1", 0, 12); // A-L
+      generateMatrix("matrix2", 12, 24); // M-X
+    }
+    
+    // Generate a single matrix with slots from startIndex to endIndex (exclusive)
+    function generateMatrix(matrixId, startIndex, endIndex) {
+      const matrix = document.getElementById(matrixId);
+      matrix.innerHTML = "";
+      
+      // Create the primary droppable row as the first row (no header row)
+      const primaryRow = document.createElement("tr");
+      const primaryLabel = document.createElement("th");
+      primaryLabel.textContent = "Primary";
+      primaryRow.appendChild(primaryLabel);
+      
+      // Add droppable cells for each letter
+      for (let i = startIndex; i < endIndex; i++) {
+        const letter = String.fromCharCode(65 + i);
+        const cell = document.createElement("td");
+        cell.classList.add("primary-droppable");
+        cell.setAttribute("data-slot", letter);
+        cell.innerHTML = `<span class="placeholder">${letter}</span>`;
+        primaryRow.appendChild(cell);
+      }
+      matrix.appendChild(primaryRow);
+      
+      // Create the 4 gameweek rows
+      for (let week = 1; week <= 4; week++) {
+        const weekRow = document.createElement("tr");
+        const weekLabel = document.createElement("th");
+        weekLabel.textContent = `MD ${week}`;
+        weekRow.appendChild(weekLabel);
+        
+        // Add cells for each letter with appropriate placeholders
+        for (let i = startIndex; i < endIndex; i++) {
+          const letter = String.fromCharCode(65 + i);
+          const placeholder = mapping[letter][week-1] || "";
+          const cell = document.createElement("td");
+          cell.classList.add("gameweek-cell");
+          cell.setAttribute("data-placeholder", placeholder);
+          cell.innerHTML = `<span class="placeholder">${placeholder}</span>`;
+          weekRow.appendChild(cell);
+        }
+        matrix.appendChild(weekRow);
+      }
+    }
+
+    // Propagate assignment: update every gameweek cell (across both matrices)
+    // that has a data-placeholder attribute equal to the given letter.
+    function propagateAssignment(letter, teamData) {
+      document.querySelectorAll('.gameweek-cell').forEach(cell => {
+        if (cell.getAttribute('data-placeholder') === letter) {
+          cell.innerHTML = `<div class="team-display"><img src="${teamData.logo}" alt="${teamData.team}"><span>${teamData.team}</span></div>`;
+          
+          // Apply animation with a slight delay for cascading effect
+          setTimeout(() => {
+            animateCell(cell);
+          }, 100);
+        }
+      });
+    }
+
+    // Populate the team list in the left panel from CSV data.
+    function populateTeamList(data) {
+      const teamListDiv = document.getElementById('teamList');
+      teamListDiv.innerHTML = "";
+      data.forEach(row => {
+        const teamName = row.TEAM || "";
+        const logoAddress = row.Logo || "";
+        const teamDiv = document.createElement('div');
+        teamDiv.classList.add('team');
+        teamDiv.setAttribute('draggable', 'true');
+        teamDiv.setAttribute('data-team', teamName);
+        teamDiv.setAttribute('data-logo', logoAddress);
+        teamDiv.innerHTML = `<img src="${logoAddress}" alt="${teamName}"><span>${teamName}</span>`;
+        teamListDiv.appendChild(teamDiv);
+      });
+      // Enable dragging for each team item.
+      document.querySelectorAll('.team').forEach(team => {
+        team.addEventListener('dragstart', (e) => {
+          const teamData = {
+            team: team.getAttribute('data-team'),
+            logo: team.getAttribute('data-logo')
+          };
+          e.dataTransfer.setData('text/plain', JSON.stringify(teamData));
+        });
+      });
+      
+      // Also populate the team grid in the right panel
+      populateTeamGrid(data);
+    }
+    
+    // Populate the team grid in the right panel (3 columns x 8 rows)
+    function populateTeamGrid(data) {
+      const teamGridDiv = document.getElementById('teamGrid');
+      teamGridDiv.innerHTML = "";
+      
+      // Create 3x8 grid with team items
+      data.forEach((row, index) => {
+        if (index < 24) { // Limit to 24 teams (3x8 grid)
+          const teamName = row.TEAM || "";
+          const logoAddress = row.Logo || "";
+          
+          const gridItem = document.createElement('div');
+          gridItem.classList.add('team-grid-item');
+          
+          // Add color group class based on team index
+          if (index < 6) {
+            gridItem.classList.add('group-1'); // First 6 teams - light green
+          } else if (index < 12) {
+            gridItem.classList.add('group-2'); // Next 6 teams - medium green
+          } else if (index < 18) {
+            gridItem.classList.add('group-3'); // Next 6 teams - dark green
+          } else {
+            gridItem.classList.add('group-4'); // Last 6 teams - very dark green
+          }
+          
+          gridItem.innerHTML = `
+            <img src="${logoAddress}" alt="${teamName}">
+            <span>${teamName}</span>
+          `;
+          teamGridDiv.appendChild(gridItem);
+        }
+      });
+    }
+
+    // Load Teams CSV: populate the team list and then hide the CSV upload controls.
+    document.getElementById('load-team-btn').addEventListener('click', function() {
+      const fileInput = document.getElementById('team-file-input');
+      if (!fileInput.files[0]) {
+        alert("Please choose a Teams CSV file.");
+        return;
+      }
+      Papa.parse(fileInput.files[0], {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          console.log("Team CSV parsed:", results.data);
+          populateTeamList(results.data);
+          // Hide the CSV upload controls after loading.
+          document.querySelector('.file-group').style.display = 'none';
+        },
+        error: function(error) {
+          console.error("Error parsing Teams CSV:", error);
+        }
+      });
+    });
+
+    // On window load, generate the empty matrices and slot list.
+    window.onload = function() {
+      generateMatrices();
+      generateSlotList();
+    };
+  </script>
+</body>
+</html>
