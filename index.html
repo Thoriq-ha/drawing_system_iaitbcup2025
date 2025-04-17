@@ -132,19 +132,19 @@
 
       /* Color groups for team grid */
       .team-grid-item.group-1 {
-        background: #80ed99; /* Light green */
+        background: #c1ff72; /* Light green */
       }
 
       .team-grid-item.group-2 {
-        background: #57cc99; /* Medium green */
+        background: #ffde59; /* Medium green */
       }
 
       .team-grid-item.group-3 {
-        background: #38a3a5; /* Dark green */
+        background: #ffbd59; /* Dark green */
       }
 
       .team-grid-item.group-4 {
-        background: #22577a; /* Very dark green */
+        background: #ff914d; /* Very dark green */
       }
 
       .team-grid-item:hover {
@@ -867,24 +867,6 @@
               console.error("Error parsing Teams CSV:", error);
             },
           });
-          // const fileInput = document.getElementById("team-file-input");
-          // if (!fileInput.files[0]) {
-          //   alert("Please choose a Teams CSV file.");
-          //   return;
-          // }
-          // Papa.parse(fileInput.files[0], {
-          //   header: true,
-          //   skipEmptyLines: true,
-          //   complete: function (results) {
-          //     console.log("Team CSV parsed:", results.data);
-          //     populateTeamList(results.data);
-          //     // Hide the CSV upload controls after loading.
-          //     document.querySelector(".file-group").style.display = "none";
-          //   },
-          //   error: function (error) {
-          //     console.error("Error parsing Teams CSV:", error);
-          //   },
-          // });
         });
 
       // On window load, generate the empty matrices and slot list.
